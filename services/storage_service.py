@@ -47,7 +47,10 @@ class StorageService:
     
     def load_existing_results(self, base_url: str) -> Tuple[List[Tuple[str, str]], set]:
         """
-        기존 스캔 결과 로드
+        기존 스캔 결과 로드 (도메인 기반)
+        
+        같은 도메인의 가장 최근 파일을 찾아 로드합니다.
+        예: brainology.kr 도메인의 모든 URL은 같은 파일을 공유
         
         Returns:
             Tuple[List[Tuple[str, str]], set]: (제품 리스트, URL 세트)
@@ -55,10 +58,13 @@ class StorageService:
         existing_file = self._find_existing_file(base_url)
         
         if not existing_file or not existing_file.exists():
+            domain = extract_domain_from_url(base_url)
+            print(f"[STORAGE] '{domain}' 도메인의 기존 파일이 없습니다. 새로 스캔을 시작합니다.")
             return [], set()
         
         products = []
         urls = set()
+        domain = extract_domain_from_url(base_url)
         
         try:
             with open(existing_file, 'r', encoding='utf-8') as f:
@@ -75,7 +81,9 @@ class StorageService:
                             products.append((name.strip(), url.strip()))
                             urls.add(url.strip())
             
-            print(f"[STORAGE] 기존 파일에서 {len(products)}개 제품 로드: {existing_file.name}")
+            print(f"[STORAGE] ✅ '{domain}' 도메인의 기존 파일 발견!")
+            print(f"[STORAGE] 파일명: {existing_file.name}")
+            print(f"[STORAGE] 로드된 제품 수: {len(products)}개")
             return products, urls
         
         except Exception as e:
