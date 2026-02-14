@@ -180,19 +180,22 @@ class ScannerService:
         self,
         template_url: str,
         base_url: str,
-        input_product_id: int
+        input_product_id: int,
+        skip_if_exists: bool = True
     ) -> List[Tuple[str, str]]:
         """
         전체 스캔 프로세스
         
         1. 기존 저장 파일 확인 및 로드
-        2. 1차 스캔 (start=1)
-        3. 조건부 2차 스캔 (start=입력 제품 ID)
+        2. 기존 파일이 있고 skip_if_exists=True면 스캔 스킵하고 기존 데이터 반환
+        3. 1차 스캔 (start=1)
+        4. 조건부 2차 스캔 (start=입력 제품 ID)
         
         Args:
             template_url: {id}를 포함한 템플릿 URL
             base_url: 베이스 URL
             input_product_id: 입력받은 제품 ID
+            skip_if_exists: True면 기존 파일이 있을 때 스캔 스킵
             
         Returns:
             List[Tuple[str, str]]: [(제품명, URL), ...] 리스트
@@ -202,9 +205,23 @@ class ScannerService:
         found_products, found_urls = self.storage.load_existing_results(base_url)
         
         if found_products:
-            msg = f"기존 파일에서 {len(found_products)}개 제품을 불러왔습니다. 이어서 스캔합니다."
-            print(f"\n[INFO] {msg}\n")
-            self.slack.notify_step(msg)
+            if skip_if_exists:
+                # 기존 파일이 있으면 스캔 스킵
+                msg = (
+                    f"✅ 기존 스캔 결과 발견!\n"
+                    f"• 도메인: {base_url}\n"
+                    f"• 저장된 제품 수: {len(found_products)}개\n"
+                    f"• 새로운 스캔을 하지 않고 저장된 데이터를 사용합니다."
+                )
+                print(f"\n[INFO] {msg}\n")
+                self.slack.notify_step(msg)
+                
+                # 저장된 데이터 반환 (스캔 스킵)
+                return found_products
+            else:
+                msg = f"기존 파일에서 {len(found_products)}개 제품을 불러왔습니다. 이어서 스캔합니다."
+                print(f"\n[INFO] {msg}\n")
+                self.slack.notify_step(msg)
         
         # 1차 스캔
         self.slack.notify_step("🔍 1차 스캔 시작 (ID=1부터)")
